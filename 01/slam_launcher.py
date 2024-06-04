@@ -40,7 +40,7 @@ class SlamLauncher:
     def setOdometryOnly(self, p):
         self.odometryOnly = p
 
-    def run(self, inFile):
+    def run(self, inFile):      # ( လိုင်းနံပါတ် 43 )
         self.mdrawer.setAspectRatio(1.0)  # The ratio of the x axis and y axis when drawing
         cnt = 0  # logical time of processing
         if self.startN > 0:
@@ -48,7 +48,7 @@ class SlamLauncher:
         scan = Scan2D()
         #  load on scan from file
         eof = self.sreader.loadScan(inFile, cnt, scan)
-        while eof is False:
+        while eof is False:         # ( လိုင်းနံပါတ် 51 )
             if self.odometryOnly:  # map construction using odometry
                 if cnt == 0:
                     self.ipose = scan.pose
@@ -67,7 +67,7 @@ class SlamLauncher:
         print("SlamLauncher finished.")
 
         if sys.platform != 'darwin':
-            input()  # Wait for some kind of time
+            input()  # Wait for some kind of time  ( လိုင်းနံပါတ် 70 )
 
     # skip up to num scans from the start
     def skipData(self, inFile, num):
@@ -117,14 +117,14 @@ class SlamLauncher:
         return flag
 
 
-def main():
+def main(): # ( လိုင်းနံပါတ် 120 )
     argvs = sys.argv
     argc = len(argvs)
     if argc != 3:
         print("HowToWrite for this program: python slam_lancher.py FILE_NAME startN")
         return
     sl = SlamLauncher()
-    inFile = sl.setFilename(sys.argv[1])
+    inFile = sl.setFilename(sys.argv[1])    # ( လိုင်းနံပါတ် 127 )
     startN = int(sys.argv[2])
     sl.setStartN(startN)
     print("data file: %s" % sys.argv[1])
@@ -132,7 +132,7 @@ def main():
     #    sl.showScans(inFile)
     #sl.setOdometryOnly(True)
     sl.setOdometryOnly(False)
-    sl.run(inFile)
+    sl.run(inFile)                          # ( လိုင်းနံပါတ် 135 )
 
     
 if __name__ == "__main__":
