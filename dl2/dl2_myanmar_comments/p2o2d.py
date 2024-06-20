@@ -1,12 +1,5 @@
 #!/usr/bin/python
 # coding: utf-8
-# This Python program is translated by Atsushi Sakai from the following C++ software
-#  and slightly modified by Shuro Nakajima:
-#  p2o: Petite Portable Pose-graph Optimizer (https://github.com/furo-org/p2o) written by Kiyoshi Irie,
-#   Future Robotics Technology Center (fuRo), Chiba Institute of Technology.
-# This source code form is subject to the terms of the Mozilla Public License, v. 2.0.
-# If a copy of the MPL was not distributed with this file, you can obtain one
-#  at https://mozilla.org/MPL/2.0/.
 
 import sys
 import time

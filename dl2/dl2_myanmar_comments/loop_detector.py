@@ -21,33 +21,33 @@ from pose_estimator import PoseEstimatorICP
 from pose_fuser import PoseFuser
 from covariance_calculator import CovarianceCalculator
 
-# ループアーク設定情報
+# Loop arc setting information
 class LoopInfo:
     def __init__(self, arcked=False, curId=-1, refId=-1, pose=None, score=-1., cov=None):
-        self.arcked = arcked  # すでにポーズアークを張ったか
-        self.curId = curId  # 現在キーフレームid（スキャン）
-        self.refId = refId  # 参照キーフレームid（スキャン，または，LocalGridMap2D）
-        # 現在キーフレームが参照キーフレームにマッチするグローバル姿勢（Gridベースの場合は逆）
+        self.arcked = arcked  # Have you already put a pose arc?
+        self.curId = curId  # Currently key frame ID (scan)
+        self.refId = refId  # Reference key frame ID (scan or localgridmap2d)
+        # Currently a global posture where the key frame matches the reference key frame (reverse in the case of Grid base)
         self.pose = pose if pose else Pose2D()
-        self.score = score  # ICPマッチングスコア
-        self.cov = cov if cov else np.zeros((3, 3))  # 共分散
+        self.score = score  # ICP matching score
+        self.cov = cov if cov else np.zeros((3, 3))  # Scattered
 
     def setArcked(self, t):
         self.arcked = t
 
 class LoopDetector:
     def __init__(self, pg=None, radius=1., atdthre=5., scthre=0.2):
-        self.pg = pg if pg else PoseGraph()  # ポーズグラフ
-        self.radius = radius  # 探索半径[m]（現在位置と再訪点の距離閾値）
-        self.atdthre = atdthre  # 累積走行距離の差の閾値[m]
-        self.atdthre2 = 1.  # 直前のLoopDetec後からの走行距離の閾値[m]
-        self.prevDetectionPose = Pose2D(math.inf, math.inf)  # 直前のLoopDetec時のpose
-        self.scthre = scthre  # ICPスコアの閾値
-        self.pcmap = PointCloudMap()  # 点群地図
-        self.cfunc = CostFunction()  # コスト関数(ICPとは別に使う)
-        self.estim = PoseEstimatorICP()  # ロボット位置推定器(ICP)
-        self.dass = DataAssociator()  # データ対応づけ器
-        self.pfu = PoseFuser()  # センサ融合器
+        self.pg = pg if pg else PoseGraph()  # Pose graph
+        self.radius = radius  # Exploration radius [M] (distance threshold for the current location and revisited)
+        self.atdthre = atdthre  # Cumulative mileage difference threshold [M]
+        self.atdthre2 = 1.  # Skills of mileage after LoopDetec [M]
+        self.prevDetectionPose = Pose2D(math.inf, math.inf)  # Pose for LoopDetec just before
+        self.scthre = scthre  # ICP score threshold
+        self.pcmap = PointCloudMap()  # Point group map
+        self.cfunc = CostFunction()  # Cost function (used separately from ICP)
+        self.estim = PoseEstimatorICP()  # Robot position estimate (ICP)
+        self.dass = DataAssociator()  # Data -compatible device
+        self.pfu = PoseFuser()  # Sensor fusioner
 
     def setPoseGraph(self, p):
         self.pg = p
@@ -64,133 +64,133 @@ class LoopDetector:
     def setPointCloudMap(self, p):
         self.pcmap = p
 
-    # ループ検出
-    # 現在位置curPoseに近く, 現在スキャンcurScanに形が一致する場所をロボット軌跡から見つけてポーズアークを張る
+    # Loop inspection
+    # Close to the current location CURPOSE, find a place where the shape matches the scan CURSCAN from the robot trajectory and put a pose arc
     def detectLoop(self, curScan, curPose, cnt):
         print("-- detectLoop -- ")
-        # 最も近い部分地図を探す
-        atd = self.pcmap.atd  # 現在の実際の累積走行距離
-        atdR = 0  # 下記の処理で軌跡をなぞる時の累積走行距離
-        poses = self.pcmap.poses  # ロボット軌跡
-        dmin = math.inf  # 前回訪問点までの距離の最小値
+        # Find the closest part map
+        atd = self.pcmap.atd  # Current actual cumulative mileage
+        atdR = 0  # Cumulative mileage when tracing the trajectory with the following processing
+        poses = self.pcmap.poses  # Robot trajectory
+        dmin = math.inf  # The minimum distance of the distance to the previous visit point
         imin = 0
-        jmin = 0  # 距離最小の前回訪問点のインデックス
-        prevP = Pose2D()  # 直前のロボット位置
+        jmin = 0  # Index of the lowest distance last time
+        prevP = Pose2D()  # Robot position just before
         len_self_pcmap_submaps_1 = len(self.pcmap.submaps) - 1
         math_sqrt = math.sqrt
         atdFromPrev = (curPose.tx - self.prevDetectionPose.tx) * (curPose.tx - self.prevDetectionPose.tx) + (curPose.ty - self.prevDetectionPose.ty) * (curPose.ty - self.prevDetectionPose.ty)
-        if atdFromPrev < self.atdthre2:  # 直前のループ後の走行距離が短いときはループ検出しない
+        if atdFromPrev < self.atdthre2:  # When the mileage after the loop is short, the loop is not detected
             print("Already Loop Detected: dis=%f, (x,y)=%f %f"%(atdFromPrev,self.prevDetectionPose.tx,self.prevDetectionPose.ty))
             return False
-        for i in range(0, len_self_pcmap_submaps_1, 1):  # 現在の部分地図以外を探す
-            submap = self.pcmap.submaps[i]  # i番目の部分地図
-            for j in range(submap.cntS, submap.cntE, 1):  # 部分地図の各ロボット位置について
-                p = poses[j]  # ロボット位置
+        for i in range(0, len_self_pcmap_submaps_1, 1):  # Find something other than the current part map
+            submap = self.pcmap.submaps[i]  # I, the II partial map
+            for j in range(submap.cntS, submap.cntE, 1):  # About each robot position on the part of the part
+                p = poses[j]  # Robot position
                 atdR += math_sqrt((p.tx - prevP.tx) * (p.tx - prevP.tx) + (p.ty - prevP.ty) * (p.ty - prevP.ty))
-                if atd - atdR < self.atdthre:  # 現在位置までの走行距離が短いとループとみなさず, もうやめる
-                    i = len(self.pcmap.submaps)  # これで外側のループからも抜ける
+                if atd - atdR < self.atdthre:  # If the mileage to the current location is short, do not consider it as a loop, stop
+                    i = len(self.pcmap.submaps)  # Now you can get out of the outer loop
                     break
                 prevP = p
                 d = (curPose.tx - p.tx) * (curPose.tx - p.tx) + (curPose.ty - p.ty) * (curPose.ty - p.ty)
-                if d < dmin:  # 現在位置とpとの距離がこれまでの最小か
+                if d < dmin:  # Is the distance between the current location and P minimum so far
                     dmin = d
-                    imin = i  # 候補となる部分地図のインデックス
-                    jmin = j  # 前回訪問点のインデックス
-        print("dmin=%f, radius=%f, imin=%d, jmin=%d" % (math.sqrt(dmin), self.radius, imin, jmin))  # 確認用
-        if dmin > self.radius * self.radius:  # 前回訪問点までの距離が遠いとループ検出しない
+                    imin = i  # Index of partial maps that are candidates
+                    jmin = j  # Last time index
+        print("dmin=%f, radius=%f, imin=%d, jmin=%d" % (math.sqrt(dmin), self.radius, imin, jmin))  # For confirmation
+        if dmin > self.radius * self.radius:  # If the distance to the last visit point is long, the loop will not be detected
             return False
-        refSubmap = self.pcmap.submaps[imin]  # 最も近い部分地図を参照スキャンにする
+        refSubmap = self.pcmap.submaps[imin]  # See the closest part map to scan
         initPose = poses[jmin]
 
-        # 再訪点の位置を求める
+        # Finding the location of the revisit
         revisitPose = Pose2D()
         flag, revisitPose = self.estimateRevisitPose(curScan, refSubmap.mps, curPose, revisitPose)
 
-        if flag:  # ループを検出した
-            icpCov = np.empty([3, 3])  # ICPの共分散
-            icpCov = self.pfu.calIcpCovariance(revisitPose, curScan, icpCov)  # ICPの共分散を計算
-            info = LoopInfo()  # ループ検出結果
-            info.pose = revisitPose  # ループアーク情報に再訪点位置を設定
-            info.cov = icpCov  # ループアーク情報に共分散を設定。
-            info.curId = cnt  # 現在位置のノードid
-            info.refId = int(jmin)  # 前回訪問点のノードid
-            self.makeLoopArc(info)  # ループアーク生成
-            self.prevDetectionPose = revisitPose #一度検出したらatdthre2の間，検出しないようにするため
+        if flag:  # Detected the loop
+            icpCov = np.empty([3, 3])  # ICP coordination
+            icpCov = self.pfu.calIcpCovariance(revisitPose, curScan, icpCov)  # Calculate ICP coordination
+            info = LoopInfo()  # Loop detection result
+            info.pose = revisitPose  # Set a revisited position for loop arc information
+            info.cov = icpCov  # Set coordinates for loop arc information.
+            info.curId = cnt  # Current position node ID
+            info.refId = int(jmin)  # Node ID of the previous visit point
+            self.makeLoopArc(info)  # Loop arc generation
+            self.prevDetectionPose = revisitPose #Once detected, do not detect between Atdthre2.
 
         return flag
 
-    # 前回訪問点(refId)を始点ノード、現在位置(curId)を終点ノードにして、ループアークを生成する。
+    # The previous visiting point (Refid) is the start -out node, and the current location (CURID) is the terminal node to generate a loop arc.
     def makeLoopArc(self, info):
-        if info.arcked:  # infoのアークはすでに張ってある
+        if info.arcked:  # INFO arc is already stretched
             return
         info.setArcked(True)
-        srcPose = self.pcmap.poses[info.refId]  # 前回訪問点の位置
-        dstPose = Pose2D(info.pose.tx, info.pose.ty, info.pose.th)  # 再訪点の位置
+        srcPose = self.pcmap.poses[info.refId]  # Position of the previous visit point
+        dstPose = Pose2D(info.pose.tx, info.pose.ty, info.pose.th)  # Location position
         relPose = Pose2D()
-        relPose = dstPose.calRelativePose(srcPose, relPose)  # ループアークの拘束
-        # アークの拘束は始点ノードからの相対位置なので, 共分散をループアークの始点ノード座標系に変換
+        relPose = dstPose.calRelativePose(srcPose, relPose)  # Loop Arc restraint
+        # Since the restraint of Ark is a relative position from the starting point node, converting coordination to the starting point node coordinate system of the loop arc
         cov = np.empty([3, 3])
-        cov = CovarianceCalculator.rotateCovariance(srcPose, info.cov, cov, True)  # 共分散の逆回転
-        arc = self.pg.makeArc(info.refId, info.curId, relPose, cov)  # ループアーク生成
-        self.pg.addArc(arc)  # ループアーク登録
+        cov = CovarianceCalculator.rotateCovariance(srcPose, info.cov, cov, True)  # Reverse rotation of coordinates
+        arc = self.pg.makeArc(info.refId, info.curId, relPose, cov)  # Loop arc generation
+        self.pg.addArc(arc)  # Loop arc registration
 
-    # 現在スキャンcurScanと部分地図の点群refLpsでICPを行い, 再訪点の位置を求める。
+    # Currently, ICP is performed with scan Curscan and partial map point group Reflps, and the position of a revisiting point is obtained.
     def estimateRevisitPose(self, curScan, refLps, initPose, revisitPose):
-        self.dass.setRefBaseGT(refLps)  # データ対応づけ器に参照点群を設定
-        self.cfunc.setEvlimit(0.2)  # コスト関数の誤差閾値
-        print("initPose: tx=%f, ty=%f, th=%f" % (initPose.tx, initPose.ty, initPose.th))  # 確認用
+        self.dass.setRefBaseGT(refLps)  # Set the reference group in the data compatible device
+        self.cfunc.setEvlimit(0.2)  # Cost function error threshold
+        print("initPose: tx=%f, ty=%f, th=%f" % (initPose.tx, initPose.ty, initPose.th))  # For confirmation
         usedNumMin = 50  # 100
-        # 初期位置initPoseの周囲をしらみつぶしに調べる
-        # 効率化のためICPは行わず, 各位置で単純にマッチングスコアを調べる
-        rangeT = 0.5 #org 1. # 並進の探索範囲[m]
-        rangeA = 25. #org 45.  # 回転の探索範囲[度]
-        dd = 0.2  # 並進の探索間隔[m]
-        da = 2.  # 回転の探索間隔[度]
+        # Initial position Initpose Investigate the area around the INITPOSE
+        # ICP is not performed to improve efficiency, Simply check the matching score at each position
+        rangeT = 0.5 #org 1. # Parallel search range[m]
+        rangeA = 25. #org 45.  # Rotation search range [degree]
+        dd = 0.2  # Parallel search interval[m]
+        da = 2.  # Exploration interval of rotation [degree]
         scoreMin = 1000.
         scores = np.empty(0)
-        candidates = np.empty(0)  # スコアのよい候補位置
-        for dy in np.arange(-rangeT, rangeT + dd, dd):  # 並進yの探索繰り返し
-            y = initPose.ty + dy  # 初期位置に変位分dyを加える
-            for dx in np.arange(-rangeT, rangeT + dd, dd):  # 並進xの探索繰り返し
-                x = initPose.tx + dx  # 初期位置に変位分dxを加える
-                for dth in np.arange(-rangeA, rangeA + da, da):  # 回転の探索繰り返し
-                    th = MyUtil.add(initPose.th, dth)  # 初期位置に変位分dthを加える
+        candidates = np.empty(0)  # Good score candidate position
+        for dy in np.arange(-rangeT, rangeT + dd, dd):  # Repeated exploration of parallel Y
+            y = initPose.ty + dy  # Add DY to the initial position
+            for dx in np.arange(-rangeT, rangeT + dd, dd):  # Repeated exploration of parallel X
+                x = initPose.tx + dx  # Add DX to the initial position
+                for dth in np.arange(-rangeA, rangeA + da, da):  # Repeat rotation search
+                    th = MyUtil.add(initPose.th, dth)  # Add DTH to the initial position
                     pose = Pose2D(x, y, th)
-                    mratio, pose = self.dass.findCorrespondenceGT(curScan, pose)  # 位置poseでデータ対応づけ
+                    mratio, pose = self.dass.findCorrespondenceGT(curScan, pose)  # Data correspondence with position Pose
                     usedNum = len(self.dass.curLps)
-                    if usedNum < usedNumMin or mratio < 0.9:  # 対応率が悪いと飛ばす
+                    if usedNum < usedNumMin or mratio < 0.9:  # Fly if the response rate is bad
                         continue
-                    self.cfunc.setPoints(self.dass.curLps, self.dass.refLps)  # コスト関数に点群を設定
-                    score = self.cfunc.calValuePD(x, y, th)  # コスト値（マッチングスコア）
-                    pnrate = self.cfunc.getPnrate()  # 詳細な点の対応率
+                    self.cfunc.setPoints(self.dass.curLps, self.dass.refLps)  # Set a point group for cost functions
+                    score = self.cfunc.calValuePD(x, y, th)  # Cost value (matching score)
+                    pnrate = self.cfunc.getPnrate()  # Detailed response rate
                     if pnrate > 0.8:
                         candidates = np.append(candidates, pose)
                         if score < scoreMin:
                             scoreMin = score
                         scores = np.append(scores, score)
         len_candidates = len(candidates)
-        print("candidates.size=%d" % len_candidates)  # 確認用
+        print("candidates.size=%d" % len_candidates)  # For confirmation
         if len_candidates == 0:
             flag = 0
             return flag, revisitPose
 
-        # 候補位置candidatesの中から最もよいものをICPで選ぶ
-        best = Pose2D()  # 最良候補
-        smin = 1000000.  # ICPスコア最小値
-        self.estim.setScanPair_l_point2d_GT(curScan, refLps)  # ICPにスキャン設定
+        # Select the best one of the candidate position Candidates by ICP
+        best = Pose2D()  # Best candidate
+        smin = 1000000.  # ICP score smaller
+        self.estim.setScanPair_l_point2d_GT(curScan, refLps)  # Scan settings for ICP
         for i in range(len_candidates):
-            p = candidates[i]  # 候補位置
-            print("candidates %d (%d)" % (i, len_candidates))  # 確認用
+            p = candidates[i]  # Alternate position
+            print("candidates %d (%d)" % (i, len_candidates))  # For confirmation
             estP = Pose2D()
-            score, estP = self.estim.estimatePose(p, estP)  # ICPでマッチング位置を求める
-            pnrate = self.estim.getPnrate()  # ICPでの点の対応率
-            usedNum = self.estim.getUsedNum()  # ICPで使用した点数
-            print("score=%f, pnrate=%f, usedNum=%d" % (score, pnrate, usedNum))  # 確認用
-            if score < smin and pnrate >= 0.9 and usedNum >= usedNumMin:  # ループ検出は条件厳しく
+            score, estP = self.estim.estimatePose(p, estP)  # Find the matching position with ICP
+            pnrate = self.estim.getPnrate()  # Rate rate of points in ICP
+            usedNum = self.estim.getUsedNum()  # Points used in ICP
+            print("score=%f, pnrate=%f, usedNum=%d" % (score, pnrate, usedNum))  # For confirmation
+            if score < smin and pnrate >= 0.9 and usedNum >= usedNumMin:  # Loop detection is severe
                 smin = score
                 best = estP
 
-        # 最小スコアが閾値より小さければ見つけた
+        # I found it if the minimum score was smaller than the threshold
         if smin <= self.scthre:
             revisitPose = best
             flag = 1

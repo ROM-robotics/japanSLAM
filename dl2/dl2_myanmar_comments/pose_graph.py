@@ -1,18 +1,11 @@
 #!/usr/bin/python
 # coding: utf-8
-# This Python program is translated by Shuro Nakajima from the following C++ software:
-#  LittleSLAM (https://github.com/furo-org/LittleSLAM) written by Masahiro Tomono,
-#   Future Robotics Technology Center (fuRo), Chiba Institute of Technology.
-# This source code form is subject to the terms of the Mozilla Public License, v. 2.0.
-# If a copy of the MPL was not distributed with this file, you can obtain one
-#  at https://mozilla.org/MPL/2.0/.
 
 import numpy as np
 
 from pose2d import Pose2D
 
-
-# ポーズグラフの頂点
+# Pose -graph vertex
 class PoseNode:
     def __init__(self, nid=-1, pose=None, arcs=None):
         self.nid = nid
@@ -29,13 +22,13 @@ class PoseNode:
         self.arcs = np.append(self.arcs, arc)
 
 
-# ポーズグラフの辺
+# Pose -graph side
 class PoseArc:
     def __init__(self, src=None, dst=None, relPose=None, inf=None):
-        self.src = src  # このアークの始点側のノード
-        self.dst = dst  # このアークの終点側のノード
-        self.relPose = relPose if relPose else Pose2D()  # このアークのもつ相対位置(計測値)
-        self.inf = inf if inf else np.eye(3)  # 情報行列
+        self.src = src  # Node on the starting point of this arc
+        self.dst = dst  # Node on the end point of this arc
+        self.relPose = relPose if relPose else Pose2D()  # Relative position of this arc(Measured value)
+        self.inf = inf if inf else np.eye(3)  # Intelligence
 
     def setup(self, s, d, rel, inf):
         self.src = s
@@ -44,7 +37,7 @@ class PoseArc:
         self.inf = inf
 
 
-# ポーズグラフ
+# Pose graph
 class PoseGraph:
     POOL_SIZE = 100000
 
@@ -64,61 +57,61 @@ class PoseGraph:
         for i in range(len(self.arcPool)):
             self.arcPool = np.delete(self.arcPool, 0, 0)
 
-    # ノードの生成
+    # Node generation
     def allocNode(self):
         if len(self.nodePool) >= PoseGraph.POOL_SIZE:
             print("Error: exceeds nodePool capacity %d" % len(self.nodePool))
             return None
         node = PoseNode()
-        self.nodePool = np.append(self.nodePool, node)  # メモリプールに追加して, それを参照する。
+        self.nodePool = np.append(self.nodePool, node)  # Add to memory pool, See it.
         return self.nodePool[-1]
 
-    # アークの生成
+    # Arc generation
     def allocArc(self):
         if len(self.arcPool) >= PoseGraph.POOL_SIZE:
             print("Error: exceeds arcPool capacity")
             return None
         arc = PoseArc()
-        self.arcPool = np.append(self.arcPool, arc)  # メモリプールに追加して, それを参照する。
+        self.arcPool = np.append(self.arcPool, arc)  # Add to memory pool, See it.
         return self.arcPool[-1]
 
-    # グラフ生成
-    # ポーズグラフにノード追加
+    # Graph generation
+    # Add node to pose graph
     def addNode(self, pose):
-        n1 = self.allocNode()  # ノード生成
-        self.addNode2(n1, pose)  # ポーズグラフにノード追加
+        n1 = self.allocNode()  # Node generation
+        self.addNode2(n1, pose)  # Add node to pose graph
         return n1
 
-    # ポーズグラフにノード追加
+    # Add node to pose graph
     def addNode2(self, n1, pose):
-        n1.setNid(len(self.nodes))  # ノードID付与. ノードの通し番号と同じ
-        n1.setPose(pose)  # ロボット位置を設定
-        self.nodes = np.append(self.nodes, n1)  # nodesの最後に追加
+        n1.setNid(len(self.nodes))  # Node ID gave. Same as the node number
+        n1.setPose(pose)  # Set the robot position
+        self.nodes = np.append(self.nodes, n1)  # Added to the end of nodes
 
-    # ノードID(nid)からノード実体を見つける
+    # Node ID(nid)Find a node entity from
     def findNode(self, nid):
-        for i in range(len(self.nodes)):  # 単純に線形探索
+        for i in range(len(self.nodes)):  # Simply searching for linear
             n = self.nodes[i]
-            if n.nid == nid:  # nidが一致したら見つけた
+            if n.nid == nid:  # I found it when the NID matched
                 return n
         return None
 
-    # ポーズグラフにアークを追加する
+    # Add an arc to the pose graph
     def addArc(self, arc):
-        arc.src.addArc(arc)  # 終点ノードにarcを追加
-        arc.dst.addArc(arc)  # 終点ノードにarcを追加
-        self.arcs = np.append(self.arcs, arc)  # arcsの最後にarcを追加
+        arc.src.addArc(arc)  # Added ARC to the terminal node
+        arc.dst.addArc(arc)  # Added ARC to the terminal node
+        self.arcs = np.append(self.arcs, arc)  # Add ARC to the end of ARCS
 
-    # 始点ノードsrcNidと終点ノードdstNidの間にアークを生成する
+    # Generate an arc between the starting point Node SRCNID and the terminal node DSTNID
     def makeArc(self, srcNid, dstNid, relPose, cov):
-        inf = np.linalg.inv(cov)  # infはcovの逆行列
-        src = self.nodes[srcNid]  # 始点ノード
-        dst = self.nodes[dstNid]  # 終点ノード
-        arc = self.allocArc()  # アークの生成
-        arc.setup(src, dst, relPose, inf)  # relPoseは計測による相対位置
+        inf = np.linalg.inv(cov)  # INF is the reverse matrix of COV
+        src = self.nodes[srcNid]  # Starting Node
+        dst = self.nodes[dstNid]  # End point node
+        arc = self.allocArc()  # Arc generation
+        arc.setup(src, dst, relPose, inf)  # Relpose is a relative position due to measurement
         return arc
 
-    # 始点ノードがsrcNid、終点ノードがdstNidであるアークを返す
+    # Returns the arc that the starting point node is SRCNID and the terminal node is DSTNID
     def findArc(self, srcNid, dstNid):
         for i in range(len(self.arcs)):
             a = self.arcs[i]

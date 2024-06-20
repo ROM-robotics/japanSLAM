@@ -1,11 +1,5 @@
 #!/usr/bin/python
 # coding: utf-8
-# This Python program is translated by Shuro Nakajima from the following C++ software:
-#  LittleSLAM (https://github.com/furo-org/LittleSLAM) written by Masahiro Tomono,
-#   Future Robotics Technology Center (fuRo), Chiba Institute of Technology.
-# This source code form is subject to the terms of the Mozilla Public License, v. 2.0.
-# If a copy of the MPL was not distributed with this file, you can obtain one
-#  at https://mozilla.org/MPL/2.0/.
 
 import numpy as np
 
@@ -14,7 +8,7 @@ from pose2d import Pose2D
 from pose_graph import PoseGraph
 from p2o2d import Pose2D_p2o, Con2D, Optimizer2D
 
-# ポーズグラフ最適化ライブラリkslamを起動する。
+# Start the pose graph optimized library KSLAM.
 class P2oDriver2D:
     def __init__(self):
         pass
@@ -22,19 +16,19 @@ class P2oDriver2D:
     def doP2o(self, pg=None, newPoses=None, N=0):
         pg = pg if pg else PoseGraph()
         newPoses = newPoses if newPoses else np.empty(0)
-        nodes = pg.nodes  # ポーズノード
-        arcs = pg.arcs  # ポーズアーク
+        nodes = pg.nodes  # Pose node
+        arcs = pg.arcs  # Pose arc
 
-        # ポーズノードをp2o用に変換
-        pnodes = np.empty(0)  # p2oのポーズノード集合
+        # Convert pose node to P2O
+        pnodes = np.empty(0)  # P2O pose node set
         len_nodes = len(nodes)
         np_append = np.append
         for num in range(0, len_nodes, 1):
             node = nodes[num]
-            pose = node.pose  # ノードの位置
-            pnodes = np_append(pnodes, Pose2D_p2o(pose.tx, pose.ty, DEG2RAD(pose.th)))  # 位置だけ入れる
-        # ポーズアークをkslam用に変換
-        pcons = np.empty(0)  # p2oのポーズアーク集合
+            pose = node.pose  # Node position
+            pnodes = np_append(pnodes, Pose2D_p2o(pose.tx, pose.ty, DEG2RAD(pose.th)))  # Just put in the position
+        # Convert pose arc to KSLAM
+        pcons = np.empty(0)  # P2O pose arc set
         for num in range(len(arcs)):
             arc = arcs[num]
             src = arc.src
@@ -53,14 +47,14 @@ class P2oDriver2D:
             for i in range(0, 3, 1):
                 for j in range(0, 3, 1):
                     con.info_mat[i, j] = arc.inf[i, j]
-            pcons = np_append(pcons, con)  # 位置だけ入れる
+            pcons = np_append(pcons, con)  # Just put in the position
 
-        opt = Optimizer2D()  # p2oインスタンス
-        result = opt.optimize_path(pnodes, pcons, N, 3)  # N回実行
+        opt = Optimizer2D()  # P2O instance
+        result = opt.optimize_path(pnodes, pcons, N, 3)  # N -time execution
 
-        # 結果をnewPoseに格納する
+        # Store the result in Newpose
         for num in range(len(result)):
-            newPose = result[num]  # i番目のノードの修正された位置
+            newPose = result[num]  # Corrected position of II node
             pose = Pose2D(newPose.x, newPose.y, RAD2DEG(newPose.theta))
             newPoses = np_append(newPoses, pose)
         return newPoses
