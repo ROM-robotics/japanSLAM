@@ -1,0 +1,11 @@
+<launch>
+	<node pkg="pimouse_slam" name="keyboard_cmd_vel" type="keyboard_cmd_vel.py" required="true"/>
+	<node pkg="pimouse_slam" name="motors" type="motors.py" required="true"/>
+	<node pkg="urg_node" name="urg_node" type="urg_node" required="true">
+	      <param name="frame_id" value="base_link"/>
+	</node>
+
+	<arg name="scan_topic" default="/scan"/>
+	<arg name="odom_topic" default="/odom"/>
+</launch>
+	
