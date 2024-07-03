@@ -34,48 +34,48 @@ class PoseOptimizer:
     def getPnrate(self):
         return self.cfunc.getPnrate()
 
-    # データ対応づけ固定のもと, 初期値initPoseを与えてロボット位置の推定値estPoseを求める
+    # Based on the data correspondence, Give the initial value INITPOSE and find an estimated Estpose in the robot position
     def optimizePoseSL(self, initPose, estPose):
         th = initPose.th
         tx = initPose.tx
         ty = initPose.ty
-        txmin = tx  # コスト最小の解
+        txmin = tx  # Small cost
         tymin = ty
         thmin = th
-        evmin = math.inf  # コストの最小値
-        evold = evmin  # 1つ前のコスト値. 収束判定に使う
+        evmin = math.inf  # Minimum cost
+        evold = evmin  # The previous cost value. Used for convergence judgment
         pose = Pose2D()
         direction = Pose2D()
-        ev = self.cfunc.calValuePD(tx, ty, th)  # コスト計算
-        nn = 0  # 繰り返し回数. 確認用
-        while math.fabs(evold - ev) > self.evthre:  # 収束判定. 値の変化が小さいと終了
+        ev = self.cfunc.calValuePD(tx, ty, th)  # Cost calculation
+        nn = 0  # Repeat number. For confirmation
+        while math.fabs(evold - ev) > self.evthre:  # Convergence judgment. Ends if the value changes are small
             nn = nn + 1
             evold = ev
-            # 数値計算による偏微分
+            # Division of numerical calculation
             dx = (self.cfunc.calValuePD(tx + self.dd, ty, th) - ev) / self.dd
             dy = (self.cfunc.calValuePD(tx, ty + self.dd, th) - ev) / self.dd
             dth = (self.cfunc.calValuePD(tx, ty, th + self.da) - ev) / self.da
-            tx += dx  # いったん次の探索位置を決める
+            tx += dx  # Once the next search position
             ty += dy
             th += dth
-            # ブレント法による直線探索
-            pose.tx = tx  # 探索開始点
+            # Straight line search by Brent Law
+            pose.tx = tx  # Explore starting point
             pose.ty = ty
             pose.th = th
-            direction.tx = dx  # 探索方向
+            direction.tx = dx  # Exploration
             direction.ty = dy
             direction.th = dth
-            pose = self.search(ev, pose, direction)  # 直線探索実行
-            tx = pose.tx  # 直線探索で求めた位置
+            pose = self.search(ev, pose, direction)  # Straight line search execution
+            tx = pose.tx  # The position required for a straight line search
             ty = pose.ty
             th = pose.th
-            ev = self.cfunc.calValuePD(tx, ty, th)  # 求めた位置でコスト計算
-            if ev < evmin:  # コストがこれまでの最小なら更新
+            ev = self.cfunc.calValuePD(tx, ty, th)  # Cost calculation at the required position
+            if ev < evmin:  # Updated if the cost is the minimum so far
                 evmin = ev
                 txmin = tx
                 tymin = ty
                 thmin = th
-        estPose.setVal(txmin, tymin, thmin)  # 最小値を与える解を保存
+        estPose.setVal(txmin, tymin, thmin)  # Save the solution that gives the minimum value
         return evmin, estPose
 
     # Line search ブレント法で直線探索を行う

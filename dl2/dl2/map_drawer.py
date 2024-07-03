@@ -12,7 +12,7 @@ import numpy as np
 
 from l_point2d import LPoint2D
 from pose2d import Pose2D
-
+gp = gp.gp()
 
 class MapDrawer:
     def __init__(self, xmin=-10., xmax=10., ymin=-10., ymax=10., aspectR=-1.):

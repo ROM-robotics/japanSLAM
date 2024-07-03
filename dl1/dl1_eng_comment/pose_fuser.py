@@ -28,57 +28,57 @@ class PoseFuser:
     def setRefScan(self, refScan):
         self.dass.setRefBaseGT(refScan.lps)
 
-    # 逐次SLAM用のセンサ融合. 逐次SLAMでのICPとオドメトリの推定移動量を融合する.
-    # dassに参照スキャンを入れておくこと. covに移動量の共分散行列が入る
+    # Sensor fusion for one -off SLAM. Combine the estimated amount of mobility between ICP and odometry in SLAM..
+    # Put the reference scan in the dass. There is a coordinated matrix with the amount of movement in the COV
     def fusePose(self, curScan, estPose, odoMotion, lastPose, fusedPose, fusedCov):
-        # ICPの共分散
-        # 推定位置estPoseで現在スキャン点群と参照スキャン点群の対応づけ        
+        # ICP coordination
+        # Current scanning group and reference scanning group with estimated position Estpose        
         mratio, estPose = self.dass.findCorrespondenceGT(curScan, estPose)
-        # ここで得られるのは地図座標系での位置の共分散        
+        # What can be obtained here is the coordination of the position in the map coordinate system.        
         self.ecov = self.cvc.calIcpCovariance(estPose, self.dass.curLps, self.dass.refLps, self.ecov)
 
-        # オドメトリの位置と共分散
-        predPose = Pose2D()  # 予測位置用
-        # 直前位置lastPoseに移動量を加えて予測位置を計算        
+        # Distributed with the position of the odometri
+        predPose = Pose2D()  # For predictive position
+        # Calculate the predicted position by adding the moving amount to the last position Lastpose        
         predPose = Pose2D.calGlobalPose(odoMotion, lastPose, predPose)
         mcovL = np.zeros((3, 3))
         dT = 0.1 # 0.1(Raspberry Pi Mouse), 0.2(TurtleBot3)
-        # オドメトリによる移動量の簡易的な共分散
+        # Simple coordination of the amount of movement by odmetry
         mcovL = self.cvc.calMotionCovarianceSimple(odoMotion, dT, mcovL)
 
-        # 現在位置estPoseで回転させて地図座標系での共分散mcovを得る        
+        # Rotate the current location ESTPose to obtain a coordinated MCOV in the map coordinate system        
         self.mcov = CovarianceCalculator.rotateCovariance(estPose, mcovL, self.mcov, False)
-        # ecov, mcov, covともにlastPoseを原点とした局所座標系での値
-        mu1 = np.array([estPose.tx, estPose.ty, DEG2RAD(estPose.th)])  # ICPによる推定値
-        mu2 = np.array([predPose.tx, predPose.ty, DEG2RAD(predPose.th)])  # オドメトリによる推定値
+        # ecov, mcov, Both COV value in the local coordinate system based on LastPose
+        mu1 = np.array([estPose.tx, estPose.ty, DEG2RAD(estPose.th)])  # Estimated value by ICP
+        mu2 = np.array([predPose.tx, predPose.ty, DEG2RAD(predPose.th)])  # Estimated value by odmetry
         mu = np.empty(3, dtype=float)
-        mu, fusedCov = self.fuse(mu1, self.ecov, mu2, self.mcov, mu, fusedCov)  # 2つの正規分布の融合        
-        fusedPose.setVal(mu[0], mu[1], RAD2DEG(mu[2]))  # 融合した移動量を格納
+        mu, fusedCov = self.fuse(mu1, self.ecov, mu2, self.mcov, mu, fusedCov)  # Fusion of two normal distribution        
+        fusedPose.setVal(mu[0], mu[1], RAD2DEG(mu[2]))  # Stores the fused amount
         print("fusedPose: tx=%f ty=%f th=%f" % (fusedPose.tx, fusedPose.ty, fusedPose.th))
 
         return fusedPose, fusedCov
 
-    # ガウス分布の融合
-    # 2つの正規分布を融合する. muは平均, cvは共分散.
+    # Gaussian distribution fusion
+    # Combine two normal distributions. MU is average, CV is diversified.
     def fuse(self, mu1, cv1, mu2, cv2, mu, cv):
-        # 共分散行列の融合
+        # Fusion of coordinates
         IC1 = np.linalg.inv(cv1)
         IC2 = np.linalg.inv(cv2)
         IC = IC1 + IC2
         cv = np.linalg.inv(IC)
-        # 角度の補正. 融合時に連続性を保つため
-        mu11 = mu1  # ICPの方向をオドメトリに合せる
+        # Angle correction. To maintain continuity during fusion
+        mu11 = mu1  # Complete the direction of the ICP to the odometri
         da = mu2[2] - mu1[2]
         if da > math.pi:
             mu11[2] += 2 * math.pi
         elif da < -math.pi:
             mu11[2] -= 2 * math.pi
-        # 平均の融合
+        # Average fusion
         nu1 = np.dot(IC1, mu11)
         nu2 = np.dot(IC2, mu2)
         nu3 = nu1 + nu2
         mu = np.dot(cv, nu3)
-        # 角度の補正 (-pi, pi)に収める
+        # Angle correction (-pi, pi)Put in
         if mu[2] > math.pi:
             mu[2] -= 2 * math.pi
         elif mu[2] < -math.pi:

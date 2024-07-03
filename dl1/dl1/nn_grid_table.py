@@ -25,25 +25,25 @@ class NNGridCell:
         self.lps = []
 
 
-# 格子テーブル
+# Lattice table
 class NNGridTable:
     def __init__(self, csize=0.05, rsize=40.):
-        self.csize = csize  # セルサイズ[m]
-        self.rsize = rsize  # 対象領域のサイズ[m]. 正方形の1辺の半分.
-        self.tsize = int(self.rsize / self.csize)  # テーブルサイズの半分
+        self.csize = csize  # Cell size[m]
+        self.rsize = rsize  # Target area size[m]. Half of one side of the square.
+        self.tsize = int(self.rsize / self.csize)  # Half of the table size
         self.table = {}
 
-        self.dthre = 0.2  # これより遠い点は除外する[m]
-        R = int(self.dthre / self.csize)  # 先に計算しておく
+        self.dthre = 0.2  # Exclude points farther than this[m]
+        R = int(self.dthre / self.csize)  # Calculate first
         self.r_range = range(-R, R)
-        self.set_r_coords()  # 予め全座標セット
+        self.set_r_coords()  # All coordinates set in advance
         self.dthre_dthre = self.dthre * self.dthre
         self.tsizex2 = 2 * self.tsize
 
         # for makeCellPoints
-        self.gx = 0.  # 点群の重心位置
+        self.gx = 0.  # Parked center of gravity of the point group
         self.gy = 0.
-        self.nx = 0.  # 点群の法線ベクトルの平均
+        self.nx = 0.  # Average of the normal vector of the point group
         self.ny = 0.
         self.sid = 0
         self.line = ptype.LINE
@@ -56,21 +56,21 @@ class NNGridTable:
     def clear(self):        
         [c.clear() for c in self.table.values()]  # 各セルを空にする
 
-    # 格子テーブルにスキャン点lpを登録する
+    # Register a scanning point LP in the lattice table
     def addPoint(self, lp):
-        # テーブル検索のインデックス計算. まず対象領域内にあるかチェック
+        # Table search index calculation. First, check if it is in the target area
         xi = int(lp.x / self.csize) + self.tsize
-        if xi < 0 or xi > self.tsizex2:  # 対象領域の外
+        if xi < 0 or xi > self.tsizex2:  # Outside of the target area
             return
         yi = int(lp.y / self.csize) + self.tsize
-        if yi < 0 or yi > self.tsizex2:  # 対象領域の外
+        if yi < 0 or yi > self.tsizex2:  # Outside of the target area
             return
-        idx = int(yi * (self.tsizex2 + 1) + xi)  # テーブルのインデックス
+        idx = int(yi * (self.tsizex2 + 1) + xi)  # Table index
         if idx not in self.table:
             self.table[idx] = NNGridCell()            
-        self.table[idx].lps.append(lp)  # 目的のセルに入れる
+        self.table[idx].lps.append(lp)  # Put it in the desired cell
 
-    # スキャン点clpをpredPoseで座標変換した位置に最も近い点を格子テーブルから見つける
+    # Find the point closest to the position where the scanning point CLP is coordinated by predpose from the grid table
     def findClosestPoint(self, clp, predPose):
         glp = LPoint2D()  # clpの予測位置
         predPose.globalPoint_io(clp, glp)  # relPoseで座標変換
@@ -142,13 +142,13 @@ class NNGridTable:
         newLp.setType(self.line)  # タイプは直線にする
         ps_list.append(newLp)
 
-    # 格子テーブルの各セルの代表点を作ってpsに格納する
-    # 現状はセル内の各点のスキャン番号の平均をとる
+    # Create a representative point of each cell of the lattice table and store it in PS
+    # At present, the average of the scan number in each point in the cell is taken
     def makeCellPoints(self, nthre, ps):
         ps_list = ps.tolist()
         lps_list = [
-            c.lps  # セルのスキャン点群
-            # 点数がnthreより多いセルだけ処理する
+            c.lps  # Cell scanning group
+            # Process only cells that have more scores than NTHRE
             for c in self.table.values() if len(c.lps) >= nthre
         ]
         for lps in lps_list:

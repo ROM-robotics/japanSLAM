@@ -41,35 +41,35 @@ class SlamLauncher:
         self.odometryOnly = p
 
     def run(self, inFile):
-        self.mdrawer.setAspectRatio(1.0)  # 描画時のx軸とy軸の比
-        cnt = 0  # 処理の論理時刻
+        self.mdrawer.setAspectRatio(1.0)  # The ratio of the X -axis and the Y -axis when drawing
+        cnt = 0  # Processing logical time
         if self.startN > 0:
-            self.skipData(inFile, self.startN)  # startNまでデータを読み飛ばす
+            self.skipData(inFile, self.startN)  # Read the data to STARTN
         scan = Scan2D()
-        #  ファイルからスキャンを1個読み込む
+        #  Read one scan from the file
         eof = self.sreader.loadScan(inFile, cnt, scan)
         while eof is False:
-            if self.odometryOnly:  # オドメトリによる地図構築（SLAMより優先）
+            if self.odometryOnly:  # Memorial construction by odmetry (priority over SLAM)
                 if cnt == 0:
                     self.ipose = scan.pose
                     self.ipose.calRmat()
                 self.mapByOdometry(scan)
             else:
-                self.sfront.process(scan)  # SLAMによる地図構築
+                self.sfront.process(scan)  # Machine construction by SLAM
                 self.pcmap = self.sfront.pcmap
-            if cnt % self.drawSkip == 0:  # drawSkipおきに結果を描画
+            if cnt % self.drawSkip == 0:  # Drawskip draws results everywhere
                 self.mdrawer.drawMapGp(self.pcmap)
-            cnt = cnt + 1  # 論理時刻更新
-            eof = self.sreader.loadScan(inFile, cnt, scan)  # 次のスキャンを読み込む
+            cnt = cnt + 1  # Logical time update
+            eof = self.sreader.loadScan(inFile, cnt, scan)  # Read the following scan
             print("---- SlamLauncher: cnt=%d ends ----\n" % cnt)
         self.sreader.closeScanFile(inFile)
         print("pose %f %f %f" %(self.pcmap.poses[-1].tx,self.pcmap.poses[-1].ty,self.pcmap.poses[-1].th))
         print("SlamLauncher finished.")
 
         if sys.platform != 'darwin':
-            input()  # 処理終了後も描画画面を残すために何かの入力待ち
+            input()  # Wait for some kind of input to leave the drawing screen even after the processing
 
-    # 開始からnum個のスキャンまで読み飛ばす
+    # Read from the start to the N -individual scan
     def skipData(self, inFile, num):
         scan = Scan2D()
         self.sreader.loadScan(inFile, 0, scan, skip=True)
@@ -129,7 +129,7 @@ def main():
     sl.setStartN(startN)
     print("data file: %s" % sys.argv[1])
     print("startN: %d" % startN)
-    #    sl.showScans(inFile)
+    #   sl.showScans(inFile)
     #sl.setOdometryOnly(True)
     sl.setOdometryOnly(False)
     sl.run(inFile)

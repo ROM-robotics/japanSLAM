@@ -28,19 +28,19 @@ class DataAssociator:
         for i in range(len(rlps)):
             self.nntab.addPoint(rlps[i])  # ポインタにして格納
 
-    # 現在スキャンcurScanの各スキャン点に関して，predPoseで座標変換した位置で最も近い点を見つける
+    # Find the closest point in the position of the coordinates in predpose regarding each scan of each scan CURSCAN
     def findCorrespondenceGT(self, curScan, predPose):
         curLps_list = list()
         refLps_list = list()
 
         for i in range(len(curScan.lps)):
-            clp = curScan.lps[i]  # 現在スキャンの点
-            # 格子テーブルにより最近傍点を求める. 格子テーブル内に距離閾値dthreがあることに注意
+            clp = curScan.lps[i]  # Currently scanning points
+            # Recently seek nearby points due to lattice table. Note that there is a distance threshold DTHRE in the lattice table
             rlp = self.nntab.findClosestPoint(clp, predPose)
             if rlp:
                 curLps_list.append(clp)
                 refLps_list.append(rlp)
         self.curLps = np.asarray(curLps_list)
         self.refLps = np.asarray(refLps_list)
-        ratio = (1.0 * len(self.curLps) / len(curScan.lps))  # 対応がとれた点の比率
+        ratio = (1.0 * len(self.curLps) / len(curScan.lps))  # The ratio of the correspondence
         return ratio, predPose

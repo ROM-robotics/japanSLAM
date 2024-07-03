@@ -30,25 +30,25 @@ class PoseEstimatorICP:
         self.curScan = c
         self.dass.setRefBaseGT(r.lps)  # データ対応づけのために参照スキャン点を登録
 
-    # 初期値initPoseを与えてICPによりロボット位置の推定値estPoseを求める
+    # Give the initial value INITPOSE and find the estimated Estpose for the robot position by ICP
     def estimatePose(self, initPose, estPose):
-        evmin = math.inf  # コスト最小値. 初期値は大きく
-        evthre = 0.000001 #コスト変化閾値. 変化量がこれ以下なら繰り返し終了．この値を大きくするにつれ良い結果が出なくなる
-        self.popt.setEvthre(evthre*0.1) #実際には設定値は試行錯誤的
-        self.popt.setEvlimit(0.2)  # evlimitは外れ値の閾値[m]
-        ev = 0.  # コスト
-        evold = evmin  # 1つ前の値. 収束判定のために使う
+        evmin = math.inf  # Small cost. The initial value is large
+        evthre = 0.000001 #Cost change threshold. If the amount of change is less than this, repeat it.The larger the value of this value, the better the result
+        self.popt.setEvthre(evthre*0.1) #Actually, the set value is trial and error
+        self.popt.setEvlimit(0.2)  # EVLIMIT is the threshold of the off[m]
+        ev = 0.  # cost
+        evold = evmin  # The previous value. Used for convergence judgment
         pose = initPose
         poseMin = initPose
-        for i in range(100):  # i<100は振動対策，ただしi=200など繰り返し数を多くすると質が上がる場合もある．試行錯誤的な部分あり．
+        for i in range(100):  # i<100 is vibration countermeasures, but i=If the number of repetitions such as 200 is increased, the quality may rise.There is a trial and error part.
             if i > 0:
                 evold = ev
-            mratio, pose = self.dass.findCorrespondenceGT(self.curScan, pose)  # データ対応づけ
+            mratio, pose = self.dass.findCorrespondenceGT(self.curScan, pose)  # Data support
             newPose = Pose2D()
-            self.popt.setPoints(self.dass.curLps, self.dass.refLps)  # 対応結果を渡す
-            ev, newPose = self.popt.optimizePoseSL(pose, newPose)  # その対応づけにおいてロボット位置の最適化
+            self.popt.setPoints(self.dass.curLps, self.dass.refLps)  # Give the response results
+            ev, newPose = self.popt.optimizePoseSL(pose, newPose)  # Optimization of robot position in response
             pose = newPose
-            if ev < evmin:  # コスト最小結果を保存
+            if ev < evmin:  # Save cost minimum results
                 poseMin = newPose
                 evmin = ev
             if evold > ev and evold - ev < evthre:

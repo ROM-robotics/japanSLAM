@@ -32,7 +32,7 @@ class CostFunction:
     def getPnrate(self):
         return self.pnrate
 
-    # 垂直距離によるICPのコスト関数
+    # ICP cost function by vertical distance
     def calValuePD(self, tx, ty, th):
         a = DEG2RAD(th)
         cos_a = math.cos(a)
@@ -44,19 +44,19 @@ class CostFunction:
         ev_ev = self.evlimit * self.evlimit
 
         for clp, rlp in zip(self.curLps, self.refLps):
-            if rlp.type != line:  # 直線上の点でなければ使わない
+            if rlp.type != line:  # Do not use unless it is on a straight line
                 continue
             cx, cy = clp.x, clp.y
-            # clpを参照スキャンの座標系に変換
+            # Convert CLP to the coordinate system of the scan
             x = cos_a * cx - sin_a * cy + tx
             y = sin_a * cx + cos_a * cy + ty
-            pdis = (x - rlp.x) * rlp.nx + (y - rlp.y) * rlp.ny  # 垂直距離
+            pdis = (x - rlp.x) * rlp.nx + (y - rlp.y) * rlp.ny  # Vertical range
             er = pdis * pdis
             if er <= ev_ev:
-                pn += 1  # 誤差が小さい点の数
-            error += er  # 各点の誤差を累積
+                pn += 1  # Number of points with small errors
+            error += er  # Cumulative errors at each point
             nn += 1
-        error = error / nn if nn > 0 else math.inf  # 平均をとる. 有効点数が0なら, 値はHUGE_VAL
-        self.pnrate = 1.0 * pn / nn if nn > 0 else 0  # nn=0は本来ないようにしたいので仮値（エラー処理）
-        error *= 100  # 評価値が小さくなりすぎないよう100かける（100という値の意味は薄い）
+        error = error / nn if nn > 0 else math.inf  # Average. If the valid score is 0, HUGE_VAL is the value
+        self.pnrate = 1.0 * pn / nn if nn > 0 else 0  # nn=Temporary values ​​(error processing)
+        error *= 100  # Put 100 so that the valuation value is not too small (the meaning of 100 is thin)
         return error
